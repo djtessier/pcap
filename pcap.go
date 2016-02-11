@@ -30,12 +30,26 @@ var (
 	count     = 0
 	set       = make(map[string]string)
 	triggerID = -1
+	ehops     = make(map[string]string)
 )
 
 // cleanup attempts to delete any created trigger
 func cleanup() {
 	if triggerID != -1 {
 		CreateEhopRequest("DELETE", "triggers/"+fmt.Sprint(float64(triggerID)), "none")
+	}
+}
+
+func getKeys() {
+	keyfile, err := ioutil.ReadFile("keys")
+	if err != nil {
+		terminatef("Could not find keys file", err.Error())
+	} else if err := json.NewDecoder(bytes.NewReader(keyfile)).Decode(&ehops); err != nil {
+		terminatef("Keys file is in wrong format", err.Error())
+	} else {
+		for key, value := range ehops {
+			fmt.Println(key + " : " + value)
+		}
 	}
 }
 
@@ -137,6 +151,7 @@ func createTrigger(script, sessionName string) int {
 }
 
 func main() {
+	getKeys()
 	reader := bufio.NewReader(os.Stdin)
 	sessionName := askForInput("Please enter a name to be used for this session. (Single Word Only Please)")
 	fmt.Println("A -- > To capture all packets to a single IP address")
