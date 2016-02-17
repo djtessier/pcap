@@ -18,19 +18,13 @@ import (
 	"time"
 )
 
-const (
-	APIKey string = "ExtraHop apikey=d886220a756f4f22847d58b17e269dea"
-	Path   string = "https://192.168.1.120/api/v1/"
-
-//	ApiKey string = "ExtraHop apikey=7cc91b5554ae42afbeab2f1b1edb57a8"
-//	Path   string = "https://10.6.105.231/api/v1/"
-)
-
 var (
 	count     = 0
 	set       = make(map[string]string)
 	triggerID = -1
 	ehops     = make(map[string]string)
+	APIKey    = "none"
+	Path      = "none"
 )
 
 // cleanup attempts to delete any created trigger
@@ -39,7 +33,6 @@ func cleanup() {
 		CreateEhopRequest("DELETE", "triggers/"+fmt.Sprint(float64(triggerID)), "none")
 	}
 }
-
 func getKeys() {
 	keyfile, err := ioutil.ReadFile("keys")
 	if err != nil {
@@ -48,7 +41,9 @@ func getKeys() {
 		terminatef("Keys file is in wrong format", err.Error())
 	} else {
 		for key, value := range ehops {
-			fmt.Println(key + " : " + value)
+			APIKey = "ExtraHop apikey=" + value
+			Path = "https://" + key + "/api/v1/"
+			ehops[key] = value
 		}
 	}
 }
@@ -74,6 +69,9 @@ func PrettyPrint(data interface{}) {
 func CreateEhopRequest(method string, call string, payload string) *http.Response {
 	//Create a 'transport' object... this is necessary if we want to ignore
 	//the EH insecure CA.  Similar to '--insecure' option for curl
+	if APIKey == "none" {
+		log.Fatal("No key file set")
+	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
