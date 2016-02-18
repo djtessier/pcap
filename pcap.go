@@ -5,7 +5,8 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json" // so we can ignore our non root CA on EH appliance
-	"fmt"           // for printing stuff
+	"flag"
+	"fmt" // for printing stuff
 	"io/ioutil"
 	"log"      // Output
 	"net/http" // for making HTTP requests
@@ -20,6 +21,7 @@ import (
 
 var (
 	count     = 0
+	keyfile   = flag.String("k", "keys", "location of keyfile that contains hostname and APIKey")
 	set       = make(map[string]string)
 	triggerID = -1
 	ehops     = make(map[string]string)
@@ -34,7 +36,7 @@ func cleanup() {
 	}
 }
 func getKeys() {
-	keyfile, err := ioutil.ReadFile("keys")
+	keyfile, err := ioutil.ReadFile(*keyfile)
 	if err != nil {
 		terminatef("Could not find keys file", err.Error())
 	} else if err := json.NewDecoder(bytes.NewReader(keyfile)).Decode(&ehops); err != nil {
@@ -71,6 +73,7 @@ func CreateEhopRequest(method string, call string, payload string) *http.Respons
 	//the EH insecure CA.  Similar to '--insecure' option for curl
 	if APIKey == "none" {
 		log.Fatal("No key file set")
+		os.Exit(0)
 	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -149,6 +152,7 @@ func createTrigger(script, sessionName string) int {
 }
 
 func main() {
+	flag.Parse()
 	getKeys()
 	reader := bufio.NewReader(os.Stdin)
 	sessionName := askForInput("Please enter a name to be used for this session. (Single Word Only Please)")
