@@ -5,7 +5,7 @@ A simple command line utility to obtain pcap files from an ExtraHop System.
 ## Instructions
 
 1. Download either the mac or windows executable file (or compile yourself)
-2. Have a 'key' file (that matches the format of the key file shown in this repo) in the same directory as the executable
+2. Have a 'keys' file (that matches the format of the key file shown in this repo) in the same directory as the executable
 3. Run the executable
 4. The program will ask you to enter a name for a session.. feel free to use any string here (no spaces)
 5. You will be asked to either capture all packets going to a single IP address... or to capture all packets sent between two IP addresses
