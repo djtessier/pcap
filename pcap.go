@@ -1,9 +1,9 @@
 package main
 
 import (
+	//huh
 	"bufio"
 	"bytes"
-	"crypto/tls"
 	"encoding/json" // so we can ignore our non root CA on EH appliance
 	"flag"
 	"fmt" // for printing stuff
@@ -17,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tonyHuinker/ehop"
 )
 
 var (
@@ -32,7 +34,7 @@ var (
 // cleanup attempts to delete any created trigger
 func cleanup() {
 	if triggerID != -1 {
-		CreateEhopRequest("DELETE", "triggers/"+fmt.Sprint(float64(triggerID)), "none")
+		ehop.CreateEhopRequest("DELETE", "triggers/"+fmt.Sprint(float64(triggerID)), "none", APIKey, Path)
 	}
 }
 func getKeys() {
@@ -68,34 +70,6 @@ func PrettyPrint(data interface{}) {
 	log.Printf("Results:\n%s", string(b))
 }
 
-func CreateEhopRequest(method string, call string, payload string) *http.Response {
-	//Create a 'transport' object... this is necessary if we want to ignore
-	//the EH insecure CA.  Similar to '--insecure' option for curl
-	if APIKey == "none" {
-		log.Fatal("No key file set")
-		os.Exit(0)
-	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	//Crate a new client object... and pass him the parameters of the transport object
-	//we created above
-	client := http.Client{Transport: tr}
-	postBody := []byte(payload)
-	req, err := http.NewRequest(method, Path+call, bytes.NewBuffer(postBody))
-	if err != nil {
-		terminatef("Failed to create HTTP request: %q", err.Error())
-	}
-
-	//Add some header stuff to make it EH friendly
-	req.Header.Add("Authorization", APIKey)
-	req.Header.Add("Content-Type", " application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		terminatef("Failed to perform HTTP request: %q", err.Error())
-	}
-	return resp
-}
 func ConvertResponseToJSONArray(resp *http.Response) []map[string]interface{} {
 	// Depending on the request, you may not need an array
 	//var results = make(map[string]interface{})
@@ -114,7 +88,10 @@ func GetPcaps(sessionName string, finish <-chan bool) {
 		case <-finish:
 			return
 		case <-ticker:
-			response := CreateEhopRequest("GET", "packetcaptures", "none")
+			response, err := ehop.CreateEhopRequest("GET", "packetcaptures", "none", APIKey, Path)
+			if err != nil {
+				terminate(err.Error())
+			}
 			results := ConvertResponseToJSONArray(response)
 			for _, value := range results {
 				if value["name"] == sessionName && set[value["id"].(string)] == "" {
@@ -140,8 +117,11 @@ func askForInput(prompt string) string {
 // createTrigger executes a POST request to create a trigger and returns the
 // resulting triggerID. If there was an error the triggerID is set to -1
 func createTrigger(script, sessionName string) int {
-	CreateEhopRequest("POST", "triggers", script)
-	response := CreateEhopRequest("GET", "triggers", "none")
+	ehop.CreateEhopRequest("POST", "triggers", script, APIKey, Path)
+	response, err := ehop.CreateEhopRequest("GET", "triggers", "none", APIKey, Path)
+	if err != nil {
+		terminate(err.Error())
+	}
 	results := ConvertResponseToJSONArray(response)
 	for _, value := range results {
 		if value["name"] == sessionName {
@@ -193,7 +173,10 @@ func main() {
 	os.Mkdir("."+string(filepath.Separator)+"pcap", 0777)
 	for value := range set {
 		filename = set[value]
-		response := CreateEhopRequest("GET", "packetcaptures/"+value, "none")
+		response, err := ehop.CreateEhopRequest("GET", "packetcaptures/"+value, "none", APIKey, Path)
+		if err != nil {
+			terminate(err.Error())
+		}
 		fmt.Println("Downloading... " + filename)
 		filename += strconv.Itoa(counter) + ".pcap"
 		counter++
